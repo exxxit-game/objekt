@@ -72,6 +72,18 @@ function draw(main, small) {
   tex.needsUpdate = true;
 }
 
+// the steps tools/xr-room-run.mjs shows, each for its time; the run waits for the fixes in
+// docs/audit/room-probe-review.md (the next room and the walk along the walls among them)
+window.__steps = [
+  { "main": "Это твоя комната глазами очков: треугольники — сетка, линии — стены, пол и мебель. Осмотрись", "small": "1 из 6 · 15 секунд", "secs": 15 },
+  { "main": "Медленно обойди комнату вдоль стен, на расстоянии шага от них", "small": "2 из 6 · около минуты; табличка сменится сама", "secs": 60 },
+  { "main": "Подойди к столу или шкафу и посмотри на них вблизи", "small": "3 из 6 · 20 секунд", "secs": 20 },
+  { "main": "Положи контроллеры и подними обе руки перед собой, раскрой ладони", "small": "4 из 6 · 15 секунд", "secs": 15 },
+  { "main": "Встань прямо и разведи руки в стороны", "small": "5 из 6 · 10 секунд", "secs": 10 },
+  { "main": "Выйди в соседнюю комнату, постой и вернись обратно", "small": "6 из 6 · до минуты; смотри под ноги", "secs": 60 },
+  { "main": "Готово, спасибо. Снимай очки и напиши «снял»", "small": "конец", "secs": 3 }
+];
+
 const solids = [];
 let place = null;
 window.__say = (main, small = '') => {

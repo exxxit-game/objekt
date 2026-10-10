@@ -41,3 +41,4 @@ Nothing found here is left for "later" without a place in the plan's queue:
 - the best solution for every part of the project, the data from entering the game to the yearly
   report, and the protection of the repository, the site, the server and the data: plan step 4.2;
 - what the headset and the owner's gear can do: plan step 4.3.
+- [room-probe-review.md](room-probe-review.md): the real-room probe reviewed before the owner met it; its run waits for these fixes (11.10).
