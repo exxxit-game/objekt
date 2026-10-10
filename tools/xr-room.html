@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XR room</title>
+<link rel="stylesheet" href="../css/fonts.css">
+<link rel="stylesheet" href="../css/xr-probe.css">
+<script src="../vendor/aframe-1.8.0.min.js"></script>
+</head>
+<body>
+<!-- The owner's real room as the headset reads it, in mixed reality: the room's mesh drawn over the
+     cameras' view as its triangles and the planes (walls, floor, table) as outlines, coloured by what
+     the headset calls them, while his walk, the planes' sizes and heights, each mesh's triangles, his
+     hands and body, the boundary, depth, a hit on a real surface, the frame rates and the session's
+     events are recorded in window.__room (and localStorage) and read over
+     the debug link. What he is to do appears on a panel inside the headset (window.__say), as the
+     game's steps do (tools/quest-look.mjs say). Nothing from the cameras is recorded or sent. -->
+<p>Комната глазами очков. Нажмите «Начать»: вы увидите свою комнату и поверх неё — как очки её оцифровали. Ничего с камер не записывается и не отправляется.</p>
+<button id="start">Начать</button>
+<pre id="out">Результатов пока нет.</pre>
+<script type="module">
+const THREE = window.THREE;
+// No 'layers': together with the normal base layer the session fails (docs/headset-capabilities.md).
+const FEATURES = ['local-floor', 'bounded-floor', 'plane-detection', 'mesh-detection', 'hand-tracking', 'body-tracking', 'depth-sensing', 'hit-test', 'anchors'];
+// a colour for each thing the headset names (the Scene model's semantic labels); anything else white
+const COLOUR = { table: 0xf0a040, wall: 0x9aa0a8, floor: 0x5a8f5a, ceiling: 0x6a7fa0, door: 0xd06050, window: 0x60b0d0,
+  'wall art': 0xc080d0, shelf: 0xd0c060, storage: 0xd0c060, bed: 0xb07050, couch: 0xb07050, screen: 0x50d0c0, lamp: 0xffe080, plant: 0x60c060 };
+const colour = (label) => COLOUR[label] ?? 0xffffff;
+const out = document.getElementById('out');
+const round = (n) => +n.toFixed(2);
+let r = null;
+try { window.__room = JSON.parse(localStorage.getItem('xr-room') || 'null'); } catch (e) { window.__room = null; }
+
+// what was read, short: planes by kind with their sizes, meshes with their triangles, the walk
+window.__roomSummary = () => {
+  const room = window.__room;
+  if (!room) return null;
+  let walked = 0;
+  for (let i = 1; i < room.path.length; i++) walked += Math.hypot(room.path[i][1] - room.path[i - 1][1], room.path[i][3] - room.path[i - 1][3]);
+  const xs = room.path.map((p) => p[1]), zs = room.path.map((p) => p[3]);
+  return { started: room.started, ended: room.ended || null, features: room.enabledFeatures, frameRates: room.frameRates, bounds: room.bounds,
+    depth: room.depth, hitTest: room.hitTest, hands: room.hands, body: room.body,
+    walkedM: round(walked), walkSpanM: xs.length ? [round(Math.max(...xs) - Math.min(...xs)), round(Math.max(...zs) - Math.min(...zs))] : null,
+    planes: Object.values(room.planes), meshes: Object.values(room.meshes), events: room.events, steps: room.steps };
+};
+const save = () => {
+  out.textContent = JSON.stringify(window.__roomSummary(), null, 2);
+  try { localStorage.setItem('xr-room', JSON.stringify(window.__room)); } catch (e) { /* private mode */ }
+};
+if (window.__room) save();
+
+// the step he is to do: two lines on a panel below his view, nearer than a close surface, never under
+// 0.4 m, scaled to keep the text's size (as tools/quest-look.mjs say places it)
+const canvas = document.createElement('canvas');
+canvas.width = 1432; canvas.height = 487;
+const tex = new THREE.CanvasTexture(canvas);
+tex.colorSpace = THREE.SRGBColorSpace;
+const panel = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.34), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+panel.visible = false;
+function draw(main, small) {
+  const x = canvas.getContext('2d');
+  x.fillStyle = '#1c1c1c'; x.fillRect(0, 0, canvas.width, canvas.height);
+  x.fillStyle = '#dadada'; x.font = '500 75px Inter, sans-serif';
+  let line = '', y = 130;
+  for (const w of main.split(' ')) {
+    if (x.measureText(line + w).width > canvas.width - 172 && line) { x.fillText(line.trim(), 86, y); line = ''; y += 92; }
+    line += w + ' ';
+  }
+  x.fillText(line.trim(), 86, y);
+  if (small) { x.fillStyle = '#9a9a9a'; x.font = '400 48px Inter, sans-serif'; x.fillText(small, 86, canvas.height - 60); }
+  tex.needsUpdate = true;
+}
+
+const solids = [];
+let place = null;
+window.__say = (main, small = '') => {
+  draw(main, small);
+  if (r) r.steps.push([Math.round(performance.now()), main]);
+  place = true;
+  return { said: main };
+};
+
+async function start() {
+  r = window.__room = { started: new Date().toISOString(), path: [], planes: {}, meshes: {}, hands: {}, events: [], steps: [] };
+  const session = await navigator.xr.requestSession('immersive-ar', {
+    optionalFeatures: FEATURES,
+    depthSensing: { usagePreference: ['cpu-optimized', 'gpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] }
+  });
+  r.enabledFeatures = session.enabledFeatures ? [...session.enabledFeatures] : 'not reported';
+  r.frameRates = { now: session.frameRate, offered: session.supportedFrameRates ? [...session.supportedFrameRates] : 'not reported' };
+  let hits = null;
+  try { hits = await session.requestHitTestSource({ space: await session.requestReferenceSpace('viewer') }); } catch (e) { r.hitTest = 'no: ' + e.message; }
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.xr.enabled = true;
+  renderer.xr.setReferenceSpaceType('local-floor');
+  await renderer.xr.setSession(session);
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  scene.add(panel);
+  try {
+    const b = await session.requestReferenceSpace('bounded-floor');
+    const pts = [...(b.boundsGeometry || [])];
+    r.bounds = pts.length ? { points: pts.length, sizeM: [round(Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x))), round(Math.max(...pts.map((p) => p.z)) - Math.min(...pts.map((p) => p.z)))] } : 'empty';
+  } catch (e) { r.bounds = 'no: ' + e.message; }
+  session.addEventListener('visibilitychange', () => { r.events.push([Math.round(performance.now()), 'visibility ' + session.visibilityState]); save(); });
+  session.addEventListener('inputsourceschange', () => r.events.push([Math.round(performance.now()), `hands ${[...session.inputSources].filter((s) => s.hand).length}, controllers ${[...session.inputSources].filter((s) => s.gamepad).length}`]));
+  session.addEventListener('end', () => { r.ended = new Date().toISOString(); save(); });
+
+  const shown = new Map();
+  let ids = 0, lastPath = 0, lastSave = 0;
+  const show = (thing, kind, build) => {
+    let o = shown.get(thing);
+    if (o && o.changed === thing.lastChangedTime) return o;
+    if (o) { scene.remove(o.line); o.line.geometry.dispose(); if (o.solid) { scene.remove(o.solid); solids.splice(solids.indexOf(o.solid), 1); } }
+    o = { id: o ? o.id : `${kind}${++ids}`, changed: thing.lastChangedTime, ...build() };
+    for (const m of [o.line, o.solid]) if (m) { m.matrixAutoUpdate = false; scene.add(m); }
+    if (o.solid) solids.push(o.solid);
+    shown.set(thing, o);
+    return o;
+  };
+  const at = (o, pose) => { for (const m of [o.line, o.solid]) if (m) { m.matrix.fromArray(pose.transform.matrix); m.matrixWorldNeedsUpdate = true; } };
+
+  renderer.setAnimationLoop((time, frame) => {
+    if (!frame) return;
+    const ref = renderer.xr.getReferenceSpace(), viewer = frame.getViewerPose(ref);
+    if (viewer && time - lastPath > 200) {
+      const p = viewer.transform.position;
+      r.path.push([Math.round(time), round(p.x), round(p.y), round(p.z)]);
+      lastPath = time;
+      if (r.depth === undefined && frame.getDepthInformation) {
+        try { const d = frame.getDepthInformation(viewer.views[0]); r.depth = d ? { size: [d.width, d.height], centreM: round(d.getDepthInMeters(0.5, 0.5)) } : 'none'; } catch (e) { r.depth = 'no: ' + e.message; }
+      }
+    }
+    // his hands without controllers: wrist to the middle finger's tip, the longest seen on each
+    for (const src of session.inputSources) {
+      if (!src.hand) continue;
+      const w = src.hand.get('wrist'), tip = src.hand.get('middle-finger-tip');
+      const pw = w && frame.getJointPose(w, ref), pt = tip && frame.getJointPose(tip, ref);
+      if (pw && pt) r.hands[src.handedness] = Math.max(r.hands[src.handedness] || 0, round(new THREE.Vector3().copy(pw.transform.position).distanceTo(pt.transform.position)));
+    }
+    // his body: how many joints are posed, the span from the lowest to the highest, the wrists apart
+    if (frame.body) {
+      let lo = Infinity, hi = -Infinity, n = 0;
+      const wrists = [];
+      for (const [name, space] of frame.body) {
+        let p = null;
+        try { p = frame.getPose(space, ref); } catch (e) { /* a joint the browser does not pose */ }
+        if (!p) continue;
+        n++;
+        lo = Math.min(lo, p.transform.position.y); hi = Math.max(hi, p.transform.position.y);
+        if (/wrist/.test(name)) wrists.push(new THREE.Vector3().copy(p.transform.position));
+      }
+      const b = r.body || { joints: frame.body.size, names: [...frame.body.keys()] };
+      if (n) { b.posed = Math.max(b.posed || 0, n); b.spanM = Math.max(b.spanM || 0, round(hi - lo)); }
+      if (wrists.length === 2) b.wristsApartM = Math.max(b.wristsApartM || 0, round(wrists[0].distanceTo(wrists[1])));
+      r.body = b;
+    }
+    // one hit on a real surface straight ahead, through the depth sensor
+    if (hits && r.hitTest === undefined && viewer) {
+      const h = frame.getHitTestResults(hits)[0], hp = h && h.getPose(ref);
+      if (hp) r.hitTest = { aheadM: round(new THREE.Vector3().copy(viewer.transform.position).distanceTo(hp.transform.position)) };
+    }
+    // the room's mesh: its triangles as lines, and an unseen copy to place the panel against
+    for (const m of frame.detectedMeshes || []) {
+      const pose = frame.getPose(m.meshSpace, ref);
+      const o = show(m, 'mesh', () => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(m.vertices), 3));
+        g.setIndex(new THREE.BufferAttribute(new Uint32Array(m.indices), 1));
+        g.computeBoundingBox();
+        const s = g.boundingBox.getSize(new THREE.Vector3());
+        return { line: new THREE.LineSegments(new THREE.WireframeGeometry(g), new THREE.LineBasicMaterial({ color: colour(m.semanticLabel), transparent: true, opacity: 0.5 })),
+          solid: new THREE.Mesh(g, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })),
+          info: { label: m.semanticLabel || 'mesh', triangles: m.indices.length / 3, sizeM: [round(s.x), round(s.y), round(s.z)] } };
+      });
+      r.meshes[o.id] = o.info;
+      if (pose) at(o, pose);
+    }
+    // the planes: their outlines, sizes and, for the level ones, their height above the floor
+    for (const p of frame.detectedPlanes || []) {
+      const pose = frame.getPose(p.planeSpace, ref);
+      const o = show(p, 'plane', () => {
+        const pts = [...p.polygon].map((v) => new THREE.Vector3(v.x, v.y, v.z));
+        const xs = pts.map((v) => v.x), zs = pts.map((v) => v.z);
+        return { line: new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: colour(p.semanticLabel) })),
+          info: { label: p.semanticLabel || 'plane', orientation: p.orientation, sizeM: [round(Math.max(...xs) - Math.min(...xs)), round(Math.max(...zs) - Math.min(...zs))] } };
+      });
+      if (pose) { at(o, pose); r.planes[o.id] = { ...o.info, heightM: round(pose.transform.position.y) }; }
+    }
+    if (place && viewer) {
+      const eye = new THREE.Vector3().copy(viewer.transform.position), dir = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion().copy(viewer.transform.orientation));
+      dir.y = 0;
+      if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
+      dir.normalize().multiplyScalar(Math.cos(Math.PI / 12)).setY(-Math.sin(Math.PI / 12));
+      scene.updateMatrixWorld();
+      const hit = new THREE.Raycaster(eye, dir, 0.05, 0.9).intersectObjects(solids, false)[0];
+      const d = Math.max(0.4, Math.min(0.8, hit ? hit.distance - 0.1 : 0.8));
+      panel.position.copy(eye).addScaledVector(dir, d);
+      panel.scale.setScalar(d);
+      panel.lookAt(eye);
+      panel.visible = true;
+      place = false;
+      for (const src of session.inputSources) { const h = src.gamepad && src.gamepad.hapticActuators && src.gamepad.hapticActuators[0]; if (h && h.pulse) h.pulse(0.6, 120); }
+    }
+    if (time - lastSave > 2000) { save(); lastSave = time; }
+    renderer.render(scene, camera);
+  });
+}
+document.getElementById('start').onclick = () => start().catch((e) => { if (r) r.error = e.name + ': ' + e.message; save(); });
+</script>
+</body>
+</html>
