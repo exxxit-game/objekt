@@ -127,6 +127,11 @@ quoted; the time is when he said it (UTC). A risk list or a general method is no
 - Space tiers: seated, standing, roomscale 1.8×1.8 m (base; his area), large (offered only, never shrunk).
   Live players replace scripted people only where the original had real participants or a design like
   Mori & Arai; mixed reality where the original was a real room.
+- Everything the headset and the accessories made for it can measure is learned and used for realism; like space
+  tiers, an experiment may say it is more exact with an accessory the player has, and gets the most from the bare
+  headset otherwise. His own: the headset and a BoboVR strap («все, что можно измерить на очках. Надо научиться
+  измерять»; «как вот есть в играх, лучше гулять в наушниках… можно будет говорить, что лучше пользоваться вот таким,
+  если оно у вас есть. А если нет, то вот мы попробовали передать максимум с того, что и так можем» 11.10).
 - Formal «вы»; no music. Small dry details in print are welcome in the corridor too («шуточные мелочи, как у нас вот на
   бумажечке, требуются добровольцы, опыт не требуется… дополняет, а не уничтожает серьезность»). Otherwise
   humour only inside the rooms, never in the corridor's voice: the start is a serious
