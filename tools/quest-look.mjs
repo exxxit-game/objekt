@@ -35,7 +35,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adb, serveToHeadset, localPort, worn, sleepNow, openUrl, page, wornByPerson, restartBrowser, closeGameTabs } from './headset.mjs';
+import { adb, serveToHeadset, localPort, worn, sleepNow, openUrl, page, wornByPerson, restartBrowser, openGame } from './headset.mjs';
 import { requireReview } from './review-gate.mjs';
 
 const PREVIEW = 'https://exxxit-game.github.io/object-preview/';
@@ -52,9 +52,8 @@ const [cmd, arg] = process.argv.slice(2);
 if (cmd === 'open') {
   // local: the laptop's server, seen by the headset through the cable as its own localhost:3000
   const url = arg === 'local' ? serveToHeadset(Number(process.argv[4]) || localPort()) : PREVIEW;
-  const closed = await closeGameTabs();
-  openUrl(url);
-  console.log('opened', url, closed ? `(${closed} earlier game tab${closed > 1 ? 's' : ''} closed)` : '');
+  const closed = await openGame(url);
+  console.log('opened', url, closed ? `(${closed} other game tab${closed > 1 ? 's' : ''} closed)` : '');
   process.exit(0);
 }
 if (cmd === 'sleep') {

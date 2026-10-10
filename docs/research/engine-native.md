@@ -155,7 +155,7 @@ Meta pages through `metavr docs fetch` (metavr 1.8.0.17.10), all read 10 Oct 202
 
 | | A-Frame 1.8 (now) | IWSDK 1.0 | Unity 6 | Godot 4.7 |
 |---|---|---|---|---|
-| Cost to move | none | Vite build, ECS rewrite of 19 components, tests (engine-and-tools-2) | full rewrite in C#, tests via GameCI with his account; editor ~30 GB to install (C: has 24); Unity ID | full rewrite in GDScript; Android Studio, JDK |
+| Cost to move | none | Vite build, ECS rewrite of about 24 components (19 registered directly, 5 through src/engine/shapes.js; the 19 of engine-and-tools-2 was counted before), tests | full rewrite in C#, tests via GameCI with his account; editor ~30 GB to install (C: has 24); Unity ID | full rewrite in GDScript; Android Studio, JDK |
 | Gain | one code for site, desktop and Quest; plain text; IWER in CI; multiview working | Meta's "primary path"; locomotion, UI kit, multiview by default | 400-600 draw calls on Quest 2 (Meta); multiview, lightmapper, simulator with a Quest 2 profile; 60 % of Quest 3 MR titles (Unity's claim) | free, MIT, text scenes; APK and WebXR site from one engine |
 | Risk | patched vendor file; tight budget (< 100) | 1.0 is 16 days old; no shipped title found | site and desktop lost or doubled; assistant works through an editor on a 2-core laptop; MCP in beta | compatibility renderer advised; Meta toolkit 50 stars, SDK v77; no Store title found |
 | Future tasks | live play, voice, languages ours; MR good on Quest 3; durables only | as A-Frame; no networking package | built-in: multiplayer blocks, MRUK and camera, localization, subscriptions and DLC, VR Glasses | built-in: networking, translations; Meta services thinner |

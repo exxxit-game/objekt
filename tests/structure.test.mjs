@@ -40,7 +40,7 @@ for (const f of code) {
 {
   const RUSSIAN = [
     /^src\/(app|app\/lobby|rooms\/[\w-]+)\/texts\.ru\.js$/,          // every word the player reads or hears
-    /^(privacy\.html|README\.md|tools\/xr-probe(-input)?\.html)$/,     // pages people read: data, the project, the headset probe
+    /^(privacy\.html|README\.md|tools\/xr-probe(-input)?\.html|tools\/xr-room\.html)$/,     // pages people read: data, the project, the headset probes
     /^(tests\/(structure|plaque|control-reveal)\.test\.mjs|tools\/(check-voice|make-voice|quest-check|board)\.mjs)$/,   // checks and tools of the Russian texts
     /^(CLAUDE\.md|docs\/audit\/claude-md-proposed\.md|docs\/(state|mistakes|decisions|owner-decisions|board)\.md|docs\/rooms\/01-control\.md|docs\/research\/vr\/06-science\.md|docs\/art\/corridor-plan\.svg)$/, // the owner's words and the player's text, quoted
     /^\.claude\/(agents\/(request-auditor|fact-checker)\.md|skills\/new-room\/SKILL\.md)$/,   // the plan doc's Russian headings and status words, quoted

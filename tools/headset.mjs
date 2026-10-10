@@ -49,15 +49,29 @@ export function openUrl(url) {
   adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', url, 'com.oculus.browser');
 }
 
-// Every open tab of the game, the test copy's or the laptop's, closed: two game tabs play two sets
-// of sounds, so a room's hum from a tab left in its room is heard in the other tab's corridor.
-// Called before the game is opened, so only one game runs. Returns how many were closed.
-export async function closeGameTabs() {
+// The game opened in one tab only: two game tabs play two sets of sounds, so a room's hum from a tab
+// left in its room is heard in the other tab's corridor. An open game tab (the test copy's or the
+// laptop's) is pointed at the address and every other one closed; with none, the browser opens it.
+// Closing them all first left the browser with no window, and the address it was given next did
+// not load. A request the browser refuses stops the opening. Returns how many tabs were closed.
+const DEVTOOLS = 'http://127.0.0.1:9222/json';
+const devtools = async (what) => {
+  const r = await fetch(`${DEVTOOLS}/${what}`);
+  if (!r.ok) throw new Error(`the headset browser refused ${what}: ${r.status}`);
+  return r;
+};
+export async function openGame(url) {
   adb('forward', 'tcp:9222', 'localabstract:chrome_devtools_remote');
-  const tabs = await (await fetch('http://127.0.0.1:9222/json/list')).json();
-  const game = tabs.filter((t) => t.type === 'page' && /object-preview\/|localhost:3000/.test(t.url));
-  for (const t of game) await fetch(`http://127.0.0.1:9222/json/close/${t.id}`);
-  return game.length;
+  const game = (await (await devtools('list')).json()).filter((t) => t.type === 'page' && /object-preview\/|localhost:3000/.test(t.url));
+  if (!game.length) { openUrl(url); return 0; }
+  for (const t of game.slice(1)) await devtools(`close/${t.id}`);
+  await devtools(`activate/${game[0].id}`);
+  const kept = await page({ test: (u) => u === game[0].url });
+  if (!kept) throw new Error('the game tab kept open is gone');
+  const r = await kept.send('Page.navigate', { url });
+  kept.close();
+  if (r.error || r.result?.errorText) throw new Error(`the game tab did not load ${url}: ${JSON.stringify(r.error || r.result)}`);
+  return game.length - 1;
 }
 
 // A page in the headset's browser whose address matches: { tab, send, run(expression, gesture),

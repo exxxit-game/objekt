@@ -119,11 +119,19 @@ quoted; the time is when he said it (UTC). A risk list or a general method is no
 - In the headset he reads each step inside it, one at a time, never the chat (tools/quest-look.mjs say): «чтоб я
   просто одевал очки, а ты мне говорил в очках, что надо сделать, как сделать… делать это постоянной практикой,
   чтобы я не напоминал тебе об этом каждый раз» 11.10.
+- New numbers and conclusions reach him only on a page that passed the fact-check; in the chat a link and one line
+  with no new numbers, kept by a guard (not built yet). My proposal after a summary stronger than its evidence reached
+  him in the chat; his answer: «Делай… и сторож будет это проверять и это тоже» 11.10.
 - I check all a tool can measure; he judges what he sees, one action at a time («Ты должен… проверять сам
   все, что можешь»; «Мне надо делать что-то конкретно одно» 9.10 09:14); blocked: ask him at once.
 - Space tiers: seated, standing, roomscale 1.8×1.8 m (base; his area), large (offered only, never shrunk).
   Live players replace scripted people only where the original had real participants or a design like
   Mori & Arai; mixed reality where the original was a real room.
+- Everything the headset and the accessories made for it can measure is learned and used for realism; like space
+  tiers, an experiment may say it is more exact with an accessory the player has, and gets the most from the bare
+  headset otherwise. His own: the headset and a BoboVR strap («все, что можно измерить на очках. Надо научиться
+  измерять»; «как вот есть в играх, лучше гулять в наушниках… можно будет говорить, что лучше пользоваться вот таким,
+  если оно у вас есть. А если нет, то вот мы попробовали передать максимум с того, что и так можем» 11.10).
 - Formal «вы»; no music. Small dry details in print are welcome in the corridor too («шуточные мелочи, как у нас вот на
   бумажечке, требуются добровольцы, опыт не требуется… дополняет, а не уничтожает серьезность»). Otherwise
   humour only inside the rooms, never in the corridor's voice: the start is a serious
